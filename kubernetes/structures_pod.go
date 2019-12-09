@@ -296,9 +296,38 @@ func flattenVolumes(volumes []v1.Volume) ([]interface{}, error) {
 		if v.PhotonPersistentDisk != nil {
 			obj["photon_persistent_disk"] = flattenPhotonPersistentDiskVolumeSource(v.PhotonPersistentDisk)
 		}
+
+		if v.Projected != nil {
+			obj["service_account_token"] = flattenServiceAccountTokenVolumne(v.Projected)
+		}
+
 		att[i] = obj
 	}
 	return att, nil
+}
+
+func flattenServiceAccountTokenVolumne(in *v1.ProjectedVolumeSource) []interface{} {
+	att := make(map[string]interface{})
+
+	if len(in.Sources) != 1 || in.Sources[0].ServiceAccountToken == nil {
+		return []interface{}{}
+	}
+
+	tp := in.Sources[0].ServiceAccountToken
+
+	if tp.Audience != "" {
+		att["audience"] = tp.Audience
+	}
+
+	if tp.ExpirationSeconds != nil {
+		att["expiration_seconds"] = tp.ExpirationSeconds
+	}
+
+	if tp.Path != "" {
+		att["path"] = tp.Path
+	}
+
+	return []interface{}{att}
 }
 
 func flattenPersistentVolumeClaimVolumeSource(in *v1.PersistentVolumeClaimVolumeSource) []interface{} {
@@ -957,6 +986,9 @@ func expandVolumes(volumes []interface{}) ([]v1.Volume, error) {
 		}
 		if v, ok := m["azure_disk"].([]interface{}); ok && len(v) > 0 {
 			vl[i].AzureDisk = expandAzureDiskVolumeSource(v)
+		}
+		if v, ok := m["service_account_token"].([]interface{}); ok && len(v) > 0 {
+			vl[i].Projected = expandProjectedVolumeSource(v)
 		}
 		if v, ok := m["photon_persistent_disk"].([]interface{}); ok && len(v) > 0 {
 			vl[i].PhotonPersistentDisk = expandPhotonPersistentDiskVolumeSource(v)
